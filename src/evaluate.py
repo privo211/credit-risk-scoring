@@ -21,18 +21,7 @@ from src.config import POSITIVE_CLASS
 def evaluate_model(
     model, X: pd.DataFrame, y_true: pd.Series
 ) -> dict:
-    """
-    Compute comprehensive evaluation metrics for a model.
-
-    Args:
-        model: Trained classifier with predict_proba.
-        X: Feature DataFrame.
-        y_true: True labels.
-
-    Returns:
-        Dictionary with accuracy, precision, recall, f1, roc_auc,
-        and confusion matrix.
-    """
+    """Compute comprehensive evaluation metrics for a model."""
     y_pred = model.predict(X)
     y_prob = model.predict_proba(X)[:, POSITIVE_CLASS]
 
@@ -67,17 +56,7 @@ def print_metrics(metrics: dict, label: str = ""):
 def compare_models(
     models: dict, X_val: pd.DataFrame, y_val: pd.Series
 ) -> pd.DataFrame:
-    """
-    Evaluate all models and produce a comparison DataFrame.
-
-    Args:
-        models: Dictionary of {name: model}.
-        X_val: Validation features.
-        y_val: Validation labels.
-
-    Returns:
-        DataFrame with model comparison metrics.
-    """
+    """Evaluate all models and produce a comparison DataFrame."""
     results = []
     for name, model in models.items():
         if model is None:
@@ -101,7 +80,6 @@ def compare_models(
     print(df.to_string(index=False))
     print("=" * 80)
 
-    # Find best model by ROC-AUC
     numeric_results = [
         (r["Model"], float(r["ROC-AUC"])) for r in results
     ]

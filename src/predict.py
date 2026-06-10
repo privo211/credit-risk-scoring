@@ -7,14 +7,11 @@ import logging
 import time
 import joblib
 import pandas as pd
-import numpy as np
 from src.config import (
     MODELS_DIR,
     PREPROCESSOR_PATH,
     BEST_MODEL_PATH,
-    RISK_THRESHOLDS,
     MODEL_VERSION,
-    RANDOM_STATE,
 )
 from src.preprocess import engineer_features
 
@@ -22,15 +19,6 @@ logger = logging.getLogger(__name__)
 
 
 def get_risk_band(probability: float) -> str:
-    """
-    Map a probability to a risk band.
-
-    Args:
-        probability: Predicted probability of default (0-1).
-
-    Returns:
-        "LOW", "MEDIUM", or "HIGH".
-    """
     if probability < 0.30:
         return "LOW"
     elif probability <= 0.60:
@@ -40,15 +28,6 @@ def get_risk_band(probability: float) -> str:
 
 
 def load_model(model_path: str = BEST_MODEL_PATH):
-    """
-    Load a trained model from disk.
-
-    Args:
-        model_path: Path to the serialized model.
-
-    Returns:
-        Loaded model object.
-    """
     model_path_str = str(model_path)
     if model_path_str.startswith(str(MODELS_DIR)):
         path = model_path
@@ -62,15 +41,6 @@ def load_model(model_path: str = BEST_MODEL_PATH):
 
 
 def load_preprocessor(preprocessor_path: str = PREPROCESSOR_PATH):
-    """
-    Load the fitted preprocessor from disk.
-
-    Args:
-        preprocessor_path: Path to the serialized preprocessor.
-
-    Returns:
-        Loaded preprocessor object.
-    """
     pp_path_str = str(preprocessor_path)
     if pp_path_str.startswith(str(MODELS_DIR)):
         path = preprocessor_path
@@ -88,17 +58,7 @@ def predict_proba(
     model,
     preprocessor,
 ) -> float:
-    """
-    Predict the probability of default for a single applicant.
-
-    Args:
-        applicant: Dictionary of applicant features.
-        model: Trained model.
-        preprocessor: Fitted preprocessor.
-
-    Returns:
-        Probability of default (class 1) as a float in [0, 1].
-    """
+    """Predict default probability for a single applicant."""
     start_time = time.time()
     df = pd.DataFrame([applicant])
 
@@ -137,17 +97,7 @@ def predict_batch(
     model,
     preprocessor,
 ) -> list[dict]:
-    """
-    Predict default probability for multiple applicants.
-
-    Args:
-        applicants: List of applicant dictionaries.
-        model: Trained model.
-        preprocessor: Fitted preprocessor.
-
-    Returns:
-        List of dicts with probability, risk_band, model_version.
-    """
+    """Predict default probability for multiple applicants."""
     start_time = time.time()
     df = pd.DataFrame(applicants)
 

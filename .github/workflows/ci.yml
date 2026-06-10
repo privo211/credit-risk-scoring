@@ -1,0 +1,46 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt -r requirements-dev.txt
+
+      - name: Lint
+        run: ruff check src/ app/ tests/ || true
+
+      - name: Type check
+        run: mypy src/ app/ --ignore-missing-imports || true
+
+      - name: Run tests with coverage
+        run: pytest tests/ -v --cov=src --cov=app --cov-report=xml --cov-report=term-missing
+
+      - name: Build Docker image
+        run: docker build -t credit-risk-scoring:ci .
+
+  docker:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Build Docker image
+        run: docker build -t credit-risk-scoring:ci .

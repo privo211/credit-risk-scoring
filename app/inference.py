@@ -8,8 +8,6 @@ import time
 import sys
 from src.predict import load_model, load_preprocessor, predict_proba, predict_batch
 from src.config import BEST_MODEL_PATH, PREPROCESSOR_PATH, MODEL_VERSION, LOGGER_NAME
-
-# Configure structured logging
 logger = logging.getLogger(LOGGER_NAME)
 logger.setLevel(logging.INFO)
 handler = logging.StreamHandler(sys.stdout)
@@ -21,14 +19,12 @@ handler.setFormatter(
 )
 if not logger.handlers:
     logger.addHandler(handler)
-
-# Global model and preprocessor
 _model = None
 _preprocessor = None
 
 
 def load_artifacts():
-    """Load model and preprocessor. Log success or failure."""
+    """Load model and preprocessor from disk."""
     global _model, _preprocessor
     try:
         logger.info("Loading model artifacts...")
@@ -44,20 +40,11 @@ def load_artifacts():
 
 
 def is_loaded() -> bool:
-    """Check if model is loaded."""
     return _model is not None and _preprocessor is not None
 
 
 def predict_single(applicant_data: dict) -> dict:
-    """
-    Predict risk for a single applicant.
-
-    Args:
-        applicant_data: Dictionary of applicant features.
-
-    Returns:
-        Dict with probability, risk_band, model_version.
-    """
+    """Predict risk for a single applicant."""
     if not is_loaded():
         raise RuntimeError("Model not loaded. Call load_artifacts() first.")
 
@@ -73,15 +60,7 @@ def predict_single(applicant_data: dict) -> dict:
 
 
 def predict_batch_endpoint(applicants_data: list[dict]) -> list[dict]:
-    """
-    Predict risk for multiple applicants.
-
-    Args:
-        applicants_data: List of applicant dicts.
-
-    Returns:
-        List of prediction dicts.
-    """
+    """Predict risk for multiple applicants."""
     if not is_loaded():
         raise RuntimeError("Model not loaded. Call load_artifacts() first.")
 

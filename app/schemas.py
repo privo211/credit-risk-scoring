@@ -2,7 +2,7 @@
 Pydantic schemas for the Credit Risk Scoring API.
 """
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field
 from typing import Optional
 from enum import Enum
 
@@ -14,8 +14,6 @@ class RiskBand(str, Enum):
 
 
 class Applicant(BaseModel):
-    """Single applicant's financial and demographic data."""
-
     model_config = {"extra": "forbid"}
 
     checking_status: Optional[str] = Field(
@@ -44,7 +42,6 @@ class Applicant(BaseModel):
         default=None,
         ge=0,
         le=100,
-        description="Installment rate in percentage of disposable income",
     )
     personal_status: Optional[str] = Field(
         default=None, description="Personal status and sex (A91-A95)"
@@ -60,7 +57,7 @@ class Applicant(BaseModel):
         default=None, description="Property (A121-A124)"
     )
     age: Optional[float] = Field(
-        default=None, ge=0, le=150, description="Age in years"
+        default=None, ge=0, le=150,
     )
     other_plans: Optional[str] = Field(
         default=None, description="Other installment plans (A141-A145)"
@@ -71,7 +68,6 @@ class Applicant(BaseModel):
     num_credits: Optional[float] = Field(
         default=None,
         ge=0,
-        description="Number of existing credits at this bank",
     )
     job: Optional[str] = Field(
         default=None, description="Job category (A171-A174)"
@@ -90,41 +86,39 @@ class Applicant(BaseModel):
 
 
 class PredictionResult(BaseModel):
-    """Response for a single prediction."""
-
     probability: float = Field(
         ..., ge=0, le=1, description="Predicted probability of default"
     )
     risk_band: RiskBand = Field(
-        ..., description="Risk category based on probability threshold"
+        ...,
     )
     model_version: str = Field(
-        ..., description="Version of the deployed model"
+        ...,
     )
 
 
 class BatchPredictionRequest(BaseModel):
-    """Request containing multiple applicants for batch prediction."""
-
     applicants: list[Applicant] = Field(
-        ..., min_length=1, description="List of applicants to evaluate"
+        ..., min_length=1,
     )
 
 
 class BatchPredictionResponse(BaseModel):
-    """Response containing predictions for multiple applicants."""
-
     predictions: list[PredictionResult] = Field(
-        ..., description="List of prediction results"
+        ...,
     )
-    count: int = Field(..., description="Number of predictions returned")
+    count: int = Field(
+        ...,
+    )
 
 
 class HealthResponse(BaseModel):
-    """Response for the health check endpoint."""
-
-    status: str = Field(..., description="Service health status")
-    model_loaded: bool = Field(
-        ..., description="Whether the model is loaded and ready"
+    status: str = Field(
+        ...,
     )
-    version: str = Field(..., description="API version")
+    model_loaded: bool = Field(
+        ...,
+    )
+    version: str = Field(
+        ...,
+    )

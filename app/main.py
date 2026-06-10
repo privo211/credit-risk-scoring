@@ -29,7 +29,6 @@ logger = logging.getLogger(LOGGER_NAME)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Load model artifacts on startup, clean up on shutdown."""
     logger.info("Starting Credit Risk Scoring Service...")
     success = load_artifacts()
     if success:
@@ -58,7 +57,6 @@ app.add_middleware(
 
 @app.get("/health", response_model=HealthResponse)
 async def health():
-    """Health check endpoint. Returns service status and model state."""
     return HealthResponse(
         status="healthy",
         model_loaded=is_loaded(),
@@ -68,11 +66,6 @@ async def health():
 
 @app.post("/predict", response_model=PredictionResult)
 async def predict(applicant: Applicant):
-    """
-    Predict default risk for a single applicant.
-
-    Takes applicant features and returns probability + risk band.
-    """
     if not is_loaded():
         raise HTTPException(
             status_code=503,
@@ -91,9 +84,6 @@ async def predict(applicant: Applicant):
 
 @app.post("/batch_predict", response_model=BatchPredictionResponse)
 async def batch_predict(request: BatchPredictionRequest):
-    """
-    Predict default risk for multiple applicants in a single request.
-    """
     if not is_loaded():
         raise HTTPException(
             status_code=503,

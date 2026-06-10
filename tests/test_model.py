@@ -9,7 +9,6 @@ from src.data_loader import load_and_split_data
 
 
 def test_model_loads():
-    """Best model should load without error."""
     model = load_model()
     assert model is not None
     assert hasattr(model, "predict")
@@ -17,14 +16,12 @@ def test_model_loads():
 
 
 def test_preprocessor_loads():
-    """Preprocessor should load without error."""
     preprocessor = load_preprocessor()
     assert preprocessor is not None
     assert hasattr(preprocessor, "transform")
 
 
 def test_prediction_probability_range():
-    """Prediction probability should be in [0, 1]."""
     model = load_model()
     preprocessor = load_preprocessor()
     _, _, X_test, _, _, y_test = load_and_split_data()
@@ -34,7 +31,6 @@ def test_prediction_probability_range():
 
 
 def test_risk_band_boundaries():
-    """Risk band thresholds should be correct."""
     assert get_risk_band(0.00) == "LOW"
     assert get_risk_band(0.29) == "LOW"
     assert get_risk_band(0.30) == "MEDIUM"
@@ -46,7 +42,6 @@ def test_risk_band_boundaries():
 
 
 def test_batch_predictions_return_correct_length():
-    """Batch predictions should return one result per input."""
     model = load_model()
     preprocessor = load_preprocessor()
     _, _, X_test, _, _, _ = load_and_split_data()

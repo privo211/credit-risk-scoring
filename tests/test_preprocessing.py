@@ -8,7 +8,6 @@ from src.config import ENGINEERED_FEATURES, NUMERIC_FEATURES, CATEGORICAL_FEATUR
 
 
 def test_feature_engineering_adds_columns():
-    """Feature engineering should add exactly 3 new columns."""
     X_train, _, _, _, _, _ = load_and_split_data()
     original_cols = X_train.columns.tolist()
     X_train_fe = engineer_features(X_train)
@@ -19,7 +18,6 @@ def test_feature_engineering_adds_columns():
 
 
 def test_feature_engineering_no_missing_values():
-    """Engineered features should not introduce NaN values."""
     X_train, _, _, _, _, _ = load_and_split_data()
     X_train_fe = engineer_features(X_train)
     for col in ENGINEERED_FEATURES:
@@ -29,18 +27,15 @@ def test_feature_engineering_no_missing_values():
 
 
 def test_pipeline_output_shape():
-    """Preprocessing pipeline should produce expected number of features."""
     X_train, _, _, _, _, _ = load_and_split_data()
     X_train_fe = engineer_features(X_train)
     preprocessor = build_preprocessor()
     X_processed = preprocessor.fit_transform(X_train_fe)
-    # After fitting, the preprocessor should produce output
     assert X_processed.shape[0] == X_train.shape[0], "Row count mismatch"
     assert X_processed.shape[1] > 0, "No features produced"
 
 
 def test_split_proportions():
-    """Train/val/test split should maintain class proportions."""
     X_train, X_val, X_test, y_train, y_val, y_test = load_and_split_data()
     total = len(y_train) + len(y_val) + len(y_test)
     assert abs(len(y_train) / total - 0.6) < 0.01, "Train proportion off"
@@ -49,20 +44,17 @@ def test_split_proportions():
 
 
 def test_stratification_preserves_class_ratio():
-    """Class ratio should be roughly preserved across splits."""
     X_train, X_val, X_test, y_train, y_val, y_test = load_and_split_data()
     overall_ratio = pd.concat([y_train, y_val, y_test]).mean()
     train_ratio = y_train.mean()
     val_ratio = y_val.mean()
     test_ratio = y_test.mean()
-    # Each split ratio should be within 0.05 of overall
     assert abs(train_ratio - overall_ratio) < 0.05
     assert abs(val_ratio - overall_ratio) < 0.05
     assert abs(test_ratio - overall_ratio) < 0.05
 
 
 def test_preprocessor_handles_unknown_categories():
-    """OneHotEncoder with handle_unknown='ignore' should handle unseen categories."""
     X_train, X_val, _, _, _, _ = load_and_split_data()
     X_train_fe = engineer_features(X_train)
     X_val_fe = engineer_features(X_val)

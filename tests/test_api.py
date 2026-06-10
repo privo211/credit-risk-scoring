@@ -13,7 +13,6 @@ def client():
 
 @pytest.mark.asyncio
 async def test_health_endpoint(client):
-    """GET /health should return 200 with correct schema."""
     response = await client.get("/health")
     assert response.status_code == 200
     data = response.json()
@@ -25,7 +24,6 @@ async def test_health_endpoint(client):
 
 @pytest.mark.asyncio
 async def test_predict_endpoint_invalid_data(client):
-    """POST /predict with unknown field should return 422."""
     response = await client.post(
         "/predict",
         json={"invalid_field": "test"},
@@ -35,7 +33,6 @@ async def test_predict_endpoint_invalid_data(client):
 
 @pytest.mark.asyncio
 async def test_predict_endpoint_valid_schema(client):
-    """POST /predict with valid applicant should return correct schema."""
     applicant = {
         "duration": 24.0,
         "credit_amount": 5000.0,
@@ -72,7 +69,6 @@ async def test_predict_endpoint_valid_schema(client):
 
 @pytest.mark.asyncio
 async def test_batch_predict_endpoint(client):
-    """POST /batch_predict should return correct-length list."""
     applicants = [
         {
             "duration": 24.0,

@@ -29,9 +29,12 @@ tests/
 .DS_Store
 Thumbs.db
 
-# Docker
+# Build/test infra (not needed in runtime image)
 Dockerfile
 .dockerignore
+alembic/
+alembic.ini
+docker-compose.yml
 
 # Logs
 *.log

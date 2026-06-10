@@ -112,6 +112,13 @@ ENGINEERED_FEATURES = [
     "credit_amount_per_duration",
     "age_band",
     "installment_burden",
+    "debt_to_income_proxy",
+    "employment_stability_score",
+    "savings_adequacy",
+    "checking_balance_score",
+    "high_risk_purpose_flag",
+    "guarantor_buffer",
+    "credit_utilization",
 ]
 
 # Age bands

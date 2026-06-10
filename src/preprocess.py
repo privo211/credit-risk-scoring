@@ -15,7 +15,9 @@ from src.config import (
 
 
 def engineer_features(df: pd.DataFrame) -> pd.DataFrame:
-    """Add engineered features: credit_amount_per_duration, age_band, installment_burden."""
+    """Add 10 engineered features: credit_amount_per_duration, age_band, installment_burden,
+    debt_to_income_proxy, employment_stability_score, savings_adequacy,
+    checking_balance_score, high_risk_purpose_flag, guarantor_buffer, credit_utilization."""
     df = df.copy()
 
     df["credit_amount_per_duration"] = np.where(
@@ -31,6 +33,27 @@ def engineer_features(df: pd.DataFrame) -> pd.DataFrame:
     df["age_band"] = np.select(conditions, choices, default="senior")
 
     df["installment_burden"] = (df["installment_rate"] / 100.0) * df["credit_amount"]
+
+    df["debt_to_income_proxy"] = df["credit_amount"] / (
+        df["duration"] * df["installment_rate"] / 100 + 1
+    )
+
+    employment_map = {"A71": 0, "A72": 1, "A73": 2, "A74": 3, "A75": 4}
+    df["employment_stability_score"] = df["employment"].map(employment_map).fillna(0)
+
+    savings_map = {"A61": 0, "A62": 1, "A63": 2, "A64": 3, "A65": 4}
+    df["savings_adequacy"] = df["savings"].map(savings_map).fillna(0)
+
+    checking_map = {"A11": 0, "A12": 1, "A13": 2, "A14": 3}
+    df["checking_balance_score"] = df["checking_status"].map(checking_map).fillna(0)
+
+    df["high_risk_purpose_flag"] = np.where(
+        df["purpose"].isin(["A41", "A43", "A46", "A410"]), 1, 0
+    )
+
+    df["guarantor_buffer"] = np.where(df["guarantors"] != "A101", 1, 0)
+
+    df["credit_utilization"] = df["credit_amount"] / np.maximum(df["num_credits"], 1)
 
     return df
 

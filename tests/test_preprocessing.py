@@ -12,7 +12,7 @@ def test_feature_engineering_adds_columns():
     original_cols = X_train.columns.tolist()
     X_train_fe = engineer_features(X_train)
     new_cols = set(X_train_fe.columns) - set(original_cols)
-    assert len(new_cols) == 3, f"Expected 3 new cols, got {len(new_cols)}"
+    assert len(new_cols) == len(ENGINEERED_FEATURES), f"Expected {len(ENGINEERED_FEATURES)} new cols, got {len(new_cols)}"
     for feat in ENGINEERED_FEATURES:
         assert feat in X_train_fe.columns, f"Missing engineered feature: {feat}"
 

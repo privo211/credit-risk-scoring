@@ -6,6 +6,7 @@ import warnings
 
 from src.data_loader import load_and_split_data, save_processed_data
 from src.preprocess import engineer_features, build_preprocessor
+from sklearn.calibration import CalibratedClassifierCV
 from src.train import train_all_models, select_best_model, save_model, save_preprocessor, save_metadata
 from src.evaluate import evaluate_model, print_metrics
 from src.config import MODEL_VERSION
@@ -55,6 +56,12 @@ def main() -> None:
 
     models = train_all_models(X_train_p, y_train)
     best_name, best_model = select_best_model(models, X_val_p, y_val)
+
+    logger.info("Calibrating best model with Platt scaling on validation set...")
+    calibrated = CalibratedClassifierCV(best_model, method="sigmoid", cv="prefit")
+    calibrated.fit(X_val_p, y_val)
+    best_model = calibrated
+    logger.info("Calibration complete")
 
     save_model(best_model, "models/best_model.pkl")
     save_model(models.get("Logistic Regression"), "models/logistic_regression.pkl")

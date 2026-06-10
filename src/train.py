@@ -3,6 +3,7 @@ import joblib
 import numpy as np
 import pandas as pd
 from datetime import datetime
+from imblearn.over_sampling import SMOTE
 from sklearn.linear_model import LogisticRegression
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import GridSearchCV, StratifiedKFold
@@ -85,13 +86,20 @@ def train_xgboost(X_train, y_train, cv=CV_FOLDS):
 
 
 def train_all_models(X_train: pd.DataFrame, y_train: pd.Series) -> dict:
+    # Apply SMOTE to handle class imbalance
+    smote = SMOTE(random_state=RANDOM_STATE)
+    X_train_res, y_train_res = smote.fit_resample(X_train, y_train)
+    print(f"  SMOTE applied: {len(X_train)} -> {len(X_train_res)} samples")
+    unique, counts = np.unique(y_train_res, return_counts=True)
+    print(f"  Class distribution: {dict(zip(unique, counts))}")
+
     models = {}
     print("Training Logistic Regression...")
-    models["Logistic Regression"] = train_logistic_regression(X_train, y_train)
+    models["Logistic Regression"] = train_logistic_regression(X_train_res, y_train_res)
     print("Training Random Forest...")
-    models["Random Forest"] = train_random_forest(X_train, y_train)
+    models["Random Forest"] = train_random_forest(X_train_res, y_train_res)
     print("Training XGBoost...")
-    models["XGBoost"] = train_xgboost(X_train, y_train)
+    models["XGBoost"] = train_xgboost(X_train_res, y_train_res)
     return models
 
 

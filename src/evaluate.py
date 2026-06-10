@@ -1,6 +1,6 @@
 """
 Model evaluation module for Credit Risk Scoring.
-Computes metrics, confusion matrices, and model comparison.
+Computes metrics, confusion matrices, model comparison, and optimal threshold search.
 """
 
 import numpy as np
@@ -95,3 +95,37 @@ def print_classification_report(model, X_val, y_val):
     target_names = ["No Default (0)", "Default (1)"]
     print("\nClassification Report:")
     print(classification_report(y_val, y_pred, target_names=target_names))
+
+
+def find_optimal_threshold(
+    model,
+    X_val,
+    y_val,
+    cost_fn: float = 5.0,
+    cost_fp: float = 1.0,
+    pos_class: int = 1,
+):
+    """Find probability threshold minimizing total cost.
+
+    Cost matrix: FN costs cost_fn (default 5x), FP costs cost_fp (default 1x).
+    Sweeps thresholds 0.10-0.90 in 0.05 steps.
+
+    Returns:
+        Tuple of (best_threshold, best_cost).
+    """
+    y_prob = model.predict_proba(X_val)[:, pos_class]
+    thresholds = np.arange(0.10, 0.95, 0.05)
+    best_threshold = 0.5
+    best_cost = float("inf")
+
+    for t in thresholds:
+        y_pred = (y_prob >= t).astype(int)
+        tn, fp, fn, tp = confusion_matrix(y_val, y_pred).ravel()
+        total_cost = fn * cost_fn + fp * cost_fp
+        if total_cost < best_cost:
+            best_cost = total_cost
+            best_threshold = t
+
+    print(f"  Optimal threshold: {best_threshold:.2f} (total cost: {best_cost:.2f})")
+    print(f"    Cost params: FN={cost_fn}x, FP={cost_fp}x")
+    return best_threshold, best_cost

@@ -95,6 +95,19 @@ class PredictionResult(BaseModel):
     model_version: str = Field(
         ...,
     )
+    shap_values: Optional[list[float]] = Field(
+        default=None, description="Local SHAP feature contributions (positive=increases risk)",
+    )
+
+
+class PredictionLogResponse(BaseModel):
+    id: int
+    timestamp: str
+    probability: float
+    risk_band: str
+    model_version: str
+    prediction_time_ms: Optional[float] = None
+    error: Optional[str] = None
 
 
 class BatchPredictionRequest(BaseModel):

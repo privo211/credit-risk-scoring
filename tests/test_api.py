@@ -68,6 +68,38 @@ async def test_predict_endpoint_valid_schema(client):
 
 
 @pytest.mark.asyncio
+async def test_predict_invalid_type(client):
+    """POST /predict with wrong field type returns 422."""
+    response = await client.post("/predict", json={"duration": "not-a-number"})
+    assert response.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_predict_out_of_range(client):
+    """POST /predict with negative duration returns 422."""
+    response = await client.post("/predict", json={"duration": -1})
+    assert response.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_batch_predict_empty_list(client):
+    """POST /batch_predict with empty applicants list returns 422."""
+    response = await client.post("/batch_predict", json={"applicants": []})
+    assert response.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_health_response_types(client):
+    """GET /health returns expected types."""
+    response = await client.get("/health")
+    assert response.status_code == 200
+    data = response.json()
+    assert isinstance(data["status"], str)
+    assert isinstance(data["model_loaded"], bool)
+    assert isinstance(data["version"], str)
+
+
+@pytest.mark.asyncio
 async def test_batch_predict_endpoint(client):
     applicants = [
         {

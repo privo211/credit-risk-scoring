@@ -57,9 +57,9 @@ def main() -> None:
     models = train_all_models(X_train_p, y_train)
     best_name, best_model = select_best_model(models, X_val_p, y_val)
 
-    logger.info("Calibrating best model with Platt scaling on validation set...")
-    calibrated = CalibratedClassifierCV(best_model, method="sigmoid", cv="prefit")
-    calibrated.fit(X_val_p, y_val)
+    logger.info("Calibrating best model with Platt scaling (5-fold CV on training data)...")
+    calibrated = CalibratedClassifierCV(best_model, method="sigmoid", cv=5)
+    calibrated.fit(X_train_p, y_train)
     best_model = calibrated
     logger.info("Calibration complete")
 

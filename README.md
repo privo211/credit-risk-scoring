@@ -1,6 +1,20 @@
 # Credit Risk Scoring Service
 
-> End-to-end machine learning pipeline for loan default prediction with FastAPI, Docker, model evaluation, and production-style deployment.
+[![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue)](https://www.python.org/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.115-green)](https://fastapi.tiangolo.com/)
+[![scikit-learn](https://img.shields.io/badge/scikit--learn-1.6-orange)](https://scikit-learn.org/)
+[![Docker](https://img.shields.io/badge/Docker-ready-blue)](https://www.docker.com/)
+[![Tests](https://img.shields.io/badge/tests-15%20passing-brightgreen)]()
+
+> End-to-end machine learning pipeline for loan default prediction with FastAPI, Docker, model evaluation, and production-style deployment. Built as a portfolio project demonstrating production ML engineering skills.
+
+**What this project shows:**
+- 🧹 **Production ML pipeline** — data cleaning, preprocessing, feature engineering, model training, evaluation
+- 🚀 **Deployable API** — FastAPI service with /predict, /batch_predict, /health endpoints
+- 📦 **Containerized** — Docker-ready with reproducible builds
+- ✅ **Tested** — 15 unit tests across preprocessing, model, and API layers
+- 📊 **Evaluated** — 3 models compared (LR, RF, XGBoost) with GridSearchCV hyperparameter tuning
+- 🎯 **Business-ready** — Risk bands (LOW/MEDIUM/HIGH) with threshold tuning
 
 ---
 
@@ -88,6 +102,10 @@ credit-risk-scoring/
 │   ├── test_model.py
 │   └── test_api.py
 ├── notebooks/              # EDA
+├── scripts/                # Utility scripts
+│   ├── sample_payload.json # Sample request for testing
+│   └── test_api.sh         # API endpoint test script
+├── Makefile                # Build/train/test/run commands
 ├── requirements.txt
 ├── Dockerfile
 └── README.md
@@ -95,89 +113,54 @@ credit-risk-scoring/
 
 ---
 
-## How to Run Locally
+## Quick Start
 
 ### Prerequisites
 
 - Python 3.11+
 - pip
+- Docker (optional, for containerized deployment)
 
-### Setup
+### Setup & Run (3 commands)
 
 ```bash
-# Clone the repository
-git clone https://github.com/privo211/credit-risk-scoring.git
-cd credit-risk-scoring
+# 1. Install dependencies
+make setup
 
-# Install dependencies
-pip install -r requirements.txt
+# 2. Train models (LR, RF, XGBoost) and save artifacts
+make train
 
-# Train the model
-python3 -c "
-from src.data_loader import load_and_split_data
-from src.preprocess import engineer_features, build_preprocessor
-from src.train import train_all_models
-from src.evaluate import compare_models
-
-X_train, X_val, X_test, y_train, y_val, y_test = load_and_split_data()
-X_train_fe, X_val_fe, X_test_fe = engineer_features(X_train), engineer_features(X_val), engineer_features(X_test)
-preprocessor = build_preprocessor()
-X_train_p = preprocessor.fit_transform(X_train_fe)
-X_val_p = preprocessor.transform(X_val_fe)
-models = train_all_models(X_train_p, y_train)
-compare_models(models, X_val_p, y_val)
-"
-
-# Start the API
-uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+# 3. Start the API server
+make run
 ```
 
-### Test a Prediction
+### Test the API
+
+Use the included test script to verify all endpoints:
 
 ```bash
+# Run all API tests (requires server running)
+./scripts/test_api.sh
+
+# Or test individually:
+# Health check
+curl "http://localhost:8000/health"
+
+# Single prediction (using sample payload)
 curl -X POST "http://localhost:8000/predict" \
   -H "Content-Type: application/json" \
-  -d '{
-    "duration": 24,
-    "credit_amount": 5000,
-    "age": 35,
-    "checking_status": "A11",
-    "credit_history": "A34",
-    "purpose": "A43",
-    "savings": "A65",
-    "employment": "A75",
-    "installment_rate": 4,
-    "personal_status": "A93",
-    "guarantors": "A101",
-    "residence_since": 4,
-    "property": "A121",
-    "other_plans": "A143",
-    "housing": "A152",
-    "num_credits": 1,
-    "job": "A173",
-    "people_maintenance": 1,
-    "telephone": "A192",
-    "foreign_worker": "A201"
-  }'
-```
+  -d @scripts/sample_payload.json
 
-### Batch Prediction
-
-```bash
+# Batch prediction
 curl -X POST "http://localhost:8000/batch_predict" \
   -H "Content-Type: application/json" \
-  -d '{
-    "applicants": [
-      {"duration": 24, "credit_amount": 5000, "age": 35, "checking_status": "A11", "credit_history": "A34"},
-      {"duration": 12, "credit_amount": 2000, "age": 28, "checking_status": "A12", "credit_history": "A33"}
-    ]
-  }'
+  -d '{"applicants": [{"duration": 24, "credit_amount": 5000, "age": 35}, {"duration": 12, "credit_amount": 2000, "age": 28}]}'
 ```
 
-### Health Check
+### Run Tests
 
 ```bash
-curl "http://localhost:8000/health"
+make test
 ```
 
 ---
@@ -186,13 +169,17 @@ curl "http://localhost:8000/health"
 
 ```bash
 # Build the image
-docker build -t credit-risk-scoring .
+make docker-build
 
 # Run the container
-docker run -p 8000:8000 credit-risk-scoring
+make docker-run
 
 # Test it
 curl "http://localhost:8000/health"
+
+# Or manually:
+docker build -t credit-risk-scoring .
+docker run -p 8000:8000 credit-risk-scoring
 ```
 
 ---
@@ -297,10 +284,24 @@ pytest tests/test_model.py -v
 pytest tests/test_api.py -v
 ```
 
-All 15 tests pass:
+```bash
+# Run all 15 unit tests
+make test
+
+# Or directly:
+pytest tests/ -v
+```
+
+All **15 tests** pass:
 - 6 preprocessing tests (feature engineering, pipeline shape, split proportions, stratification)
 - 5 model tests (model loading, prediction range, risk band boundaries, batch predictions)
 - 4 API tests (health, predict valid/invalid, batch predict)
+
+You can also run the integration test script against a running server:
+
+```bash
+./scripts/test_api.sh
+```
 
 ---
 
@@ -347,6 +348,17 @@ All 15 tests pass:
 6. Implement proper model registry with versioned artifacts
 7. Add monitoring dashboard with prediction drift alerts
 8. Include data validation with Great Expectations
+
+---
+
+## Resume Bullets
+
+These bullet points describe the project in language suitable for a resume:
+
+- Built an end-to-end **credit risk scoring system** in Python using Pandas, scikit-learn, and XGBoost, covering preprocessing, feature engineering, training, and evaluation across 3 model types.
+- Deployed a **FastAPI inference service** with Docker for reproducible real-time prediction, serving both single and batch prediction endpoints.
+- Compared multiple classification models using **precision, recall, F1-score, and ROC-AUC** to support model selection in an imbalanced financial dataset (70/30 class split).
+- Implemented **production-quality practices**: GridSearchCV hyperparameter tuning, ColumnTransformer preprocessing pipelines, Pydantic input validation, structured logging, and 15 unit tests.
 
 ---
 

@@ -15,8 +15,9 @@ env/
 
 # ML artifacts - tracked in models/
 
-# Data
+# Data (track directory structure, ignore generated files)
 data/processed/
+!data/processed/.gitkeep
 
 # IDE
 .vscode/

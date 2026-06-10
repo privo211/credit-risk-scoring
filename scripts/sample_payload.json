@@ -1,0 +1,22 @@
+{
+  "duration": 24,
+  "credit_amount": 5000,
+  "age": 35,
+  "checking_status": "A11",
+  "credit_history": "A34",
+  "purpose": "A43",
+  "savings": "A65",
+  "employment": "A75",
+  "installment_rate": 4,
+  "personal_status": "A93",
+  "guarantors": "A101",
+  "residence_since": 4,
+  "property": "A121",
+  "other_plans": "A143",
+  "housing": "A152",
+  "num_credits": 1,
+  "job": "A173",
+  "people_maintenance": 1,
+  "telephone": "A192",
+  "foreign_worker": "A201"
+}

@@ -17,12 +17,7 @@ from src.config import (
 
 
 def load_raw_data() -> pd.DataFrame:
-    """
-    Load the raw German Credit dataset from CSV.
-
-    Returns:
-        pd.DataFrame with all 20 features + target column.
-    """
+    """Load the raw German Credit dataset from CSV."""
     if not RAW_DATA_FILE.exists():
         raise FileNotFoundError(
             f"Raw data file not found at {RAW_DATA_FILE}. "
@@ -33,16 +28,7 @@ def load_raw_data() -> pd.DataFrame:
 
 
 def map_target(df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Map target from original encoding (1=good, 2=bad)
-    to binary (0=no default, 1=default).
-
-    Args:
-        df: DataFrame with original target column.
-
-    Returns:
-        DataFrame with remapped target.
-    """
+    """Map target: original (1=good, 2=bad) -> binary (0=no default, 1=default)."""
     df = df.copy()
     df[TARGET_COLUMN] = df[TARGET_COLUMN].map(TARGET_MAP)
     return df
@@ -55,19 +41,7 @@ def split_data(
     val_size: float = 0.2,
     random_state: int = RANDOM_STATE,
 ) -> tuple:
-    """
-    Split data into train, validation, and test sets with stratification.
-
-    Args:
-        df: Full DataFrame with features and target.
-        target_col: Name of the target column.
-        test_size: Proportion for test set.
-        val_size: Proportion for validation set (of full data).
-        random_state: Random seed for reproducibility.
-
-    Returns:
-        Tuple of (X_train, X_val, X_test, y_train, y_val, y_test).
-    """
+    """Split data into train/validation/test sets with stratification."""
     X = df.drop(columns=[target_col])
     y = df[target_col]
 
@@ -94,12 +68,7 @@ def split_data(
 
 
 def load_and_split_data() -> tuple:
-    """
-    Convenience function: load, map target, and split in one call.
-
-    Returns:
-        Tuple of (X_train, X_val, X_test, y_train, y_val, y_test).
-    """
+    """Convenience: load, map target, and split in one call."""
     df = load_raw_data()
     df = map_target(df)
     return split_data(df)
@@ -108,13 +77,7 @@ def load_and_split_data() -> tuple:
 def save_processed_data(
     X_train, X_val, X_test, y_train, y_val, y_test
 ) -> None:
-    """
-    Save processed data splits to disk for reproducibility.
-
-    Args:
-        X_train, X_val, X_test: Feature DataFrames.
-        y_train, y_val, y_test: Target Series.
-    """
+    """Save processed data splits to disk for reproducibility."""
     DATA_PROCESSED.mkdir(parents=True, exist_ok=True)
 
     pd.concat([X_train, y_train], axis=1).to_csv(
@@ -130,12 +93,7 @@ def save_processed_data(
 
 
 def load_processed_data() -> tuple:
-    """
-    Load pre-saved processed data splits.
-
-    Returns:
-        Tuple of (X_train, X_val, X_test, y_train, y_val, y_test).
-    """
+    """Load pre-saved processed data splits."""
     train = pd.read_csv(DATA_PROCESSED / "train.csv")
     val = pd.read_csv(DATA_PROCESSED / "val.csv")
     test = pd.read_csv(DATA_PROCESSED / "test.csv")

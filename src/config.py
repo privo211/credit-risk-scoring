@@ -105,10 +105,8 @@ AGE_BANDS = {
     "senior": (55, 200),
 }
 
-# Model version
 MODEL_VERSION = "1.0.0"
 
-# Model hyperparameters
 LOGISTIC_PARAMS = {
     "C": [0.01, 0.1, 1.0, 10.0],
     "penalty": ["l2"],
@@ -131,8 +129,6 @@ XGB_PARAMS = {
     "scale_pos_weight": [1, 2, 3],
 }
 
-# Cross-validation
 CV_FOLDS = 5
 
-# Logger name
 LOGGER_NAME = "credit_risk"

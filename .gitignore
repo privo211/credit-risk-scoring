@@ -13,10 +13,7 @@ venv/
 .venv/
 env/
 
-# ML artifacts
-*.pkl
-*.joblib
-models/
+# ML artifacts - tracked in models/
 
 # Data
 data/processed/

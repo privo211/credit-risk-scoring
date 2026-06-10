@@ -3,12 +3,29 @@ Configuration constants for the Credit Risk Scoring system.
 """
 
 from pathlib import Path
+import os
+
+
+def _env_path(key, default):
+    val = os.environ.get(key)
+    return Path(val) if val else default
+
+
+def _env_float(key, default):
+    val = os.environ.get(key)
+    return float(val) if val else default
+
+
+def _env_int(key, default):
+    val = os.environ.get(key)
+    return int(val) if val else default
+
 
 # Paths
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-DATA_RAW = PROJECT_ROOT / "data" / "raw"
-DATA_PROCESSED = PROJECT_ROOT / "data" / "processed"
-MODELS_DIR = PROJECT_ROOT / "models"
+DATA_RAW = _env_path("CREDIT_DATA_RAW", PROJECT_ROOT / "data" / "raw")
+DATA_PROCESSED = _env_path("CREDIT_DATA_PROCESSED", PROJECT_ROOT / "data" / "processed")
+MODELS_DIR = _env_path("CREDIT_MODELS_DIR", PROJECT_ROOT / "models")
 
 # Dataset files
 RAW_DATA_FILE = DATA_RAW / "german_credit_data.csv"
@@ -19,12 +36,12 @@ BEST_MODEL_PATH = MODELS_DIR / "best_model.pkl"
 MODEL_METADATA_PATH = MODELS_DIR / "model_metadata.json"
 
 # Random seed for reproducibility
-RANDOM_STATE = 42
+RANDOM_STATE = _env_int("CREDIT_RANDOM_STATE", 42)
 
 # Train/Val/Test split ratios
-TRAIN_SIZE = 0.6
-VALIDATION_SIZE = 0.2  # relative to full dataset
-TEST_SIZE = 0.2  # relative to full dataset
+TRAIN_SIZE = _env_float("CREDIT_TRAIN_SIZE", 0.6)
+VALIDATION_SIZE = _env_float("CREDIT_VALIDATION_SIZE", 0.2)  # relative to full dataset
+TEST_SIZE = _env_float("CREDIT_TEST_SIZE", 0.2)  # relative to full dataset
 
 # Target encoding
 TARGET_MAP = {1: 0, 2: 1}  # Map original: 1=good→0, 2=bad→1
@@ -129,6 +146,6 @@ XGB_PARAMS = {
     "scale_pos_weight": [1, 2, 3],
 }
 
-CV_FOLDS = 5
+CV_FOLDS = _env_int("CREDIT_CV_FOLDS", 5)
 
-LOGGER_NAME = "credit_risk"
+LOGGER_NAME = os.environ.get("CREDIT_LOGGER_NAME", "credit_risk")

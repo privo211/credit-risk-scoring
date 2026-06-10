@@ -1,8 +1,3 @@
-"""
-Model training module for Credit Risk Scoring.
-Trains and saves Logistic Regression, Random Forest, and XGBoost models.
-"""
-
 import json
 import joblib
 import numpy as np
@@ -28,10 +23,6 @@ from src.config import (
 
 
 def train_logistic_regression(X_train, y_train, cv=CV_FOLDS):
-    """
-    Train Logistic Regression with hyperparameter tuning.
-    Returns the best estimator.
-    """
     skf = StratifiedKFold(n_splits=cv, shuffle=True, random_state=RANDOM_STATE)
     lr = LogisticRegression(random_state=RANDOM_STATE)
     grid = GridSearchCV(
@@ -49,10 +40,6 @@ def train_logistic_regression(X_train, y_train, cv=CV_FOLDS):
 
 
 def train_random_forest(X_train, y_train, cv=CV_FOLDS):
-    """
-    Train Random Forest with hyperparameter tuning.
-    Returns the best estimator.
-    """
     skf = StratifiedKFold(n_splits=cv, shuffle=True, random_state=RANDOM_STATE)
     rf = RandomForestClassifier(random_state=RANDOM_STATE)
     grid = GridSearchCV(
@@ -70,10 +57,6 @@ def train_random_forest(X_train, y_train, cv=CV_FOLDS):
 
 
 def train_xgboost(X_train, y_train, cv=CV_FOLDS):
-    """
-    Train XGBoost with hyperparameter tuning.
-    Returns the best estimator.
-    """
     try:
         from xgboost import XGBClassifier
     except ImportError:
@@ -102,9 +85,6 @@ def train_xgboost(X_train, y_train, cv=CV_FOLDS):
 
 
 def train_all_models(X_train: pd.DataFrame, y_train: pd.Series) -> dict:
-    """
-    Train all three models and return them in a dictionary.
-    """
     models = {}
     print("Training Logistic Regression...")
     models["Logistic Regression"] = train_logistic_regression(X_train, y_train)
@@ -116,21 +96,18 @@ def train_all_models(X_train: pd.DataFrame, y_train: pd.Series) -> dict:
 
 
 def save_model(model, path: str):
-    """Save a trained model to disk."""
     MODELS_DIR.mkdir(parents=True, exist_ok=True)
     joblib.dump(model, path)
     print(f"  Model saved to {path}")
 
 
 def save_preprocessor(preprocessor, path: str = PREPROCESSOR_PATH):
-    """Save the fitted preprocessor to disk."""
     MODELS_DIR.mkdir(parents=True, exist_ok=True)
     joblib.dump(preprocessor, path)
     print(f"  Preprocessor saved to {path}")
 
 
 def save_metadata(model_name: str, metrics: dict):
-    """Save training metadata as JSON."""
     metadata = {
         "model_name": model_name,
         "model_version": MODEL_VERSION,
@@ -147,10 +124,6 @@ def save_metadata(model_name: str, metrics: dict):
 def select_best_model(
     models: dict, X_val: pd.DataFrame, y_val: pd.Series
 ) -> tuple[str, object]:
-    """
-    Select the best model based on ROC-AUC on validation set.
-    Returns (model_name, model).
-    """
     from sklearn.metrics import roc_auc_score
 
     best_name = None

@@ -1,122 +1,137 @@
 """
-SHAP explanation module for Credit Risk Scoring.
-Generates local and global explanations for model predictions.
+SHAP-based model explanation module for Credit Risk Scoring.
+
+Provides global feature importance and local per-prediction explanations.
 """
 
-import matplotlib.pyplot as plt
+import logging
+
 import numpy as np
 import pandas as pd
-import shap
-from typing import Union, List
 
-from src.config import POSITIVE_CLASS, MODELS_DIR
+logger = logging.getLogger(__name__)
 
-# Ensure SHAP doesn't open plots interactively by default during batch processes
-plt.switch_backend("Agg")
+try:
+    import shap
+except ImportError:
+    shap = None
+    logger.warning("shap not installed. explain module unavailable.")
 
 
-class SHAPExplainer:
-    """Wrapper around SHAP to generate model explanations."""
+def explain_global(
+    model,
+    X,
+    feature_names=None,
+    n_samples: int = 100,
+) -> pd.DataFrame:
+    """Compute global SHAP feature importance.
 
-    def __init__(self, model, background_data: pd.DataFrame):
-        """
-        Initialize the explainer.
+    Uses TreeExplainer for tree-based models (RF, XGB),
+    falls back to KernelExplainer for non-tree models.
 
-        Args:
-            model: The trained scikit-learn compatible model pipeline or estimator.
-            background_data: A representative sample of training data to use as background.
-        """
-        self.model = model
-        self.background_data = background_data
+    Args:
+        model: Fitted model with predict_proba.
+        X: Feature matrix (array or DataFrame).
+        feature_names: Column names. If None and X is a DataFrame, uses X.columns.
+        n_samples: Background samples for KernelExplainer (ignored for TreeExplainer).
 
-        # Try TreeExplainer for tree-based models, fallback to KernelExplainer
-        # or PermutationExplainer if needed. Since our final models could be
-        # RF or XGB, TreeExplainer is preferred.
-        try:
-            # We must pass the raw estimator, not a pipeline, if using TreeExplainer.
-            # But the 'model' here might be the actual estimator (e.g., best_estimator_ is
-            # ImbPipeline or just model). Let's extract the actual model if it's a pipeline.
-            if hasattr(model, 'named_steps'):
-                self.estimator = model.named_steps['model']
-            else:
-                self.estimator = model
+    Returns:
+        DataFrame with columns ['feature', 'importance'] sorted descending.
+    """
+    if shap is None:
+        logger.error("shap not installed — cannot compute explanations.")
+        return pd.DataFrame(columns=["feature", "importance"])
 
-            # If the estimator is linear, use LinearExplainer
-            if type(self.estimator).__name__ == "LogisticRegression":
-                self.explainer = shap.LinearExplainer(self.estimator, background_data)
-            else:
-                self.explainer = shap.TreeExplainer(self.estimator)
-        except Exception as e:
-            print(f"  Warning: Falling back to Explainer (Permutation) due to: {e}")
-            self.estimator = model
-            self.explainer = shap.Explainer(self.estimator.predict_proba, background_data)
+    if feature_names is None and isinstance(X, pd.DataFrame):
+        feature_names = list(X.columns)
+    elif feature_names is None:
+        feature_names = [f"feature_{i}" for i in range(X.shape[1])]
 
-    def explain_global(self, X: pd.DataFrame, save_path: str = None) -> np.ndarray:
-        """
-        Generate global feature importance explanations (summary plot).
+    X_arr = X.values if isinstance(X, pd.DataFrame) else np.array(X)
+    model_type = type(model).__name__
 
-        Args:
-            X: The dataset to explain.
-            save_path: Optional path to save the plot.
-
-        Returns:
-            The SHAP values array.
-        """
-        shap_values = self.explainer.shap_values(X)
-
-        # For classification, TreeExplainer returns a list of arrays (one per class).
-        # We want the values for the positive class.
+    try:
+        explainer = shap.TreeExplainer(model)
+        shap_values = explainer.shap_values(X_arr[:n_samples])
         if isinstance(shap_values, list):
-            vals_to_plot = shap_values[POSITIVE_CLASS]
-        else:
-            vals_to_plot = shap_values
+            shap_values = shap_values[1]
+        elif shap_values.ndim == 3:
+            shap_values = shap_values[:, :, 1]
+    except Exception:
+        background = X_arr[: min(50, len(X_arr))]
 
-        plt.figure(figsize=(10, 8))
-        shap.summary_plot(vals_to_plot, X, show=False)
+        def model_predict(x):
+            proba = model.predict_proba(x)
+            return proba[:, 1] if proba.ndim == 2 else proba
 
-        if save_path:
-            plt.savefig(save_path, bbox_inches="tight")
-            print(f"  Global SHAP summary plot saved to {save_path}")
+        explainer = shap.KernelExplainer(model_predict, background)
+        shap_values = explainer.shap_values(X_arr[: min(n_samples, len(X_arr))])
 
-        plt.close()
-        return vals_to_plot
+    importances = np.abs(shap_values).mean(axis=0)
+    result = (
+        pd.DataFrame(
+            {"feature": feature_names[: len(importances)], "importance": importances}
+        )
+        .sort_values("importance", ascending=False)
+        .reset_index(drop=True)
+    )
 
-    def explain_local(self, x: pd.Series, save_path: str = None) -> Union[dict, None]:
-        """
-        Generate local explanation for a single prediction.
+    logger.info("Global SHAP importance computed for %s (%d features)", model_type, len(result))
+    return result
 
-        Args:
-            x: Single instance to explain (Series or single-row DataFrame).
-            save_path: Optional path to save the waterfall or force plot.
 
-        Returns:
-            Dictionary containing base value and SHAP values for the instance.
-        """
-        if isinstance(x, pd.Series):
-            x = x.to_frame().T
+def explain_local(
+    model,
+    X_sample,
+    feature_names=None,
+) -> dict:
+    """Compute SHAP values for a single prediction or small batch.
 
-        # We need an Explainer object that returns an Explanation for waterfall plot
-        try:
-            # Re-create a generic explainer to get Explanation objects easily
-            # if we didn't use the generic one above.
-            if hasattr(self.model, "predict_proba"):
-                local_explainer = shap.Explainer(lambda data: self.model.predict_proba(data)[:, POSITIVE_CLASS], self.background_data)
-                shap_obj = local_explainer(x)
+    Args:
+        model: Fitted model with predict_proba.
+        X_sample: Single sample (1D) or batch (2D array/DataFrame).
+        feature_names: Feature names for the returned dict.
 
-                if save_path:
-                    plt.figure(figsize=(10, 5))
-                    shap.waterfall_plot(shap_obj[0], show=False)
-                    plt.savefig(save_path, bbox_inches="tight")
-                    plt.close()
-                    print(f"  Local SHAP waterfall plot saved to {save_path}")
+    Returns:
+        Dict with keys: 'shap_values', 'base_value', 'features'.
+    """
+    if shap is None:
+        return {"error": "shap not installed"}
 
-                return {
-                    "base_value": float(shap_obj[0].base_values),
-                    "shap_values": shap_obj[0].values.tolist(),
-                    "features": x.columns.tolist()
-                }
-            else:
-                return None
-        except Exception as e:
-            print(f"  Failed to generate local explanation: {e}")
-            return None
+    if X_sample.ndim == 1:
+        X_sample = X_sample.reshape(1, -1)
+    if isinstance(X_sample, pd.DataFrame):
+        if feature_names is None:
+            feature_names = list(X_sample.columns)
+        X_arr = X_sample.values
+    else:
+        X_arr = np.array(X_sample)
+    if feature_names is None:
+        feature_names = [f"feature_{i}" for i in range(X_arr.shape[1])]
+
+    try:
+        explainer = shap.TreeExplainer(model)
+        shap_values = explainer.shap_values(X_arr)
+        if isinstance(shap_values, list):
+            shap_values = shap_values[1]
+        elif shap_values.ndim == 3:
+            shap_values = shap_values[:, :, 1]
+        ev = explainer.expected_value
+        base_value = float(ev[1] if isinstance(ev, (list, np.ndarray)) and np.ndim(ev) > 0 else ev)
+    except Exception:
+        return {"error": f"TreeExplainer failed for {type(model).__name__}"}
+
+    if shap_values.ndim == 1:
+        shap_values = shap_values.reshape(1, -1)
+
+    per_sample = []
+    for i in range(shap_values.shape[0]):
+        per_sample.append(
+            {name: float(shap_values[i, j]) for j, name in enumerate(feature_names[: shap_values.shape[1]])}
+        )
+
+    return {
+        "shap_values": per_sample[0] if len(per_sample) == 1 else per_sample,
+        "base_value": base_value,
+        "features": feature_names,
+    }

@@ -1,72 +1,81 @@
-# Model Card: Credit Risk Scoring v1.1.0
+# Model Card: Credit Risk Scoring v2.0.0
 
 ## Model Overview
+- **Model Name**: Credit Risk Scoring Service
+- **Version**: 2.0.0
+- **Model Type**: Ensemble (Random Forest with SMOTE inside GridSearchCV + Platt Calibration)
+- **Date**: June 2026
+- **Intended Use**: Predict probability of loan default for consumer credit applications
 
-- Model name: Credit Risk Scoring Service
-- Version: 1.1.0
-- Model type: Random Forest pipeline with SMOTE and sigmoid calibration
-- Dataset: German Credit (Statlog)
-- Intended use: estimate consumer loan default probability and assign an operational risk band
+## Dataset
+- **Name**: German Credit (Statlog) Dataset
+- **Source**: UCI Machine Learning Repository
+- **Samples**: 1,000
+- **Features**: 20 raw (10 after feature engineering = 30 total input columns)
+- **Target**: Binary (0 = no default, 1 = default)
+- **Class Distribution**: 70% non-default, 30% default
+- **Missing Values**: None
 
-## Training Data
+## Feature Engineering
+The pipeline creates 10 engineered features from the 20 raw columns:
+- **credit_amount_per_duration**: Average credit amount per month of loan
+- **age_band**: Categorized age group (young, adult, middle, senior)
+- **installment_burden**: Installment rate applied to credit amount
+- **debt_to_income_proxy**: Credit amount relative to repayment capacity
+- **employment_stability_score**: Ordinal encoding of employment category (A71=0 to A75=4)
+- **savings_adequacy**: Ordinal encoding of savings level (A61=0 to A65=4)
+- **checking_balance_score**: Ordinal encoding of checking account status (A11=0 to A14=3)
+- **high_risk_purpose_flag**: Binary flag for high-risk loan purposes (A41, A43, A46, A410)
+- **guarantor_buffer**: Binary flag for presence of guarantors
+- **credit_utilization**: Average credit amount per existing credit
 
-- Samples: 1,000
-- Raw features: 20
-- Engineered features: 10
-- Target: binary default label, where 0 means no default and 1 means default
-- Split: stratified train/validation/test split of 60/20/20
+## Training Pipeline
+1. Stratified 60/20/20 train/val/test split
+2. SMOTE oversampling inside each GridSearchCV training fold
+3. StandardScaler + OneHotEncoder via ColumnTransformer
+4. GridSearchCV (5-fold) for Logistic Regression, Random Forest, XGBoost
+5. Best model selected by validation ROC-AUC
+6. Platt calibration (sigmoid, 5-fold CV) on training data
 
-## Pipeline
-
-1. Load and map the German Credit target labels.
-2. Create 10 domain-oriented engineered features.
-3. Fit a ColumnTransformer with numeric scaling and categorical one-hot encoding.
-4. Train Logistic Regression, Random Forest, and XGBoost candidates with SMOTE inside each GridSearchCV pipeline.
-5. Select the best model by validation ROC-AUC.
-6. Calibrate the selected model with sigmoid calibration on the validation set.
-7. Tune a binary decision threshold with false negatives weighted 10x false positives.
-8. Save model artifacts, metadata, and SHAP explanation plots.
-
-## Test Performance
-
+## Performance Metrics (Test Set)
 | Metric | Value |
-|---|---:|
-| ROC-AUC | 0.7955 |
-| Accuracy | 0.5200 |
-| Precision | 0.3800 |
-| Recall | 0.9500 |
-| F1 score | 0.5429 |
-| Optimal binary threshold | 0.1400 |
+|---|---|
+| ROC-AUC | 0.7861 |
+| Gini Coefficient | 0.5721 |
+| KS Statistic | 0.4405 |
+| Accuracy | 0.7700 |
+| Precision | 0.6522 |
+| Recall | 0.5000 |
+| F1 Score | 0.5660 |
 
-## Confusion Matrix
+## Confusion Matrix (Test Set)
+| | Predicted 0 | Predicted 1 |
+|---|---|---|
+| Actual 0 | TN=124 | FP=16 |
+| Actual 1 | FN=30 | TP=30 |
 
-| | Predicted no default | Predicted default |
-|---|---:|---:|
-| Actual no default | 47 | 93 |
-| Actual default | 3 | 57 |
-
-## Model Comparison
-
-| Model | Validation ROC-AUC |
-|---|---:|
+## Model Comparison (Validation ROC-AUC)
+| Model | ROC-AUC |
+|---|---|
 | Logistic Regression | 0.7307 |
 | Random Forest | 0.7453 |
 | XGBoost | 0.7379 |
 
-## Operational Notes
-
-- The API returns calibrated default probability and LOW/MEDIUM/HIGH risk bands.
-- PostgreSQL prediction logging is optional and enabled by setting CREDIT_DATABASE_URL.
-- Docker Compose runs the API with PostgreSQL 16.
-- SHAP plots are generated during training and saved under models/.
+## Fairness Considerations
+- The German Credit dataset contains demographic attributes (age, personal status, foreign worker status) that may correlate with protected groups
+- These features are included in the model; no explicit debiasing has been applied
+- Users should evaluate model fairness for their specific deployment context
+- Future work: apply fairness metrics and disparate impact analysis
 
 ## Limitations
+- Small dataset (1,000 samples) limits generalization
+- Recall of 0.5000 means the model misses approximately 50% of defaults
+- Dataset is from 1990s Germany — may not generalize to other populations or time periods
+- No continuous monitoring or drift detection implemented
 
-- German Credit has only 1,000 rows, so results should be treated as educational rather than production-ready.
-- The optimized threshold is recall-heavy and creates many false positives.
-- No fairness audit has been implemented, despite demographic attributes being present.
-- No monitoring job currently computes drift metrics on live prediction logs.
-
-## Appropriate Use
-
-This model is suitable as a portfolio demonstration of ML engineering practices. It should not be used for real lending decisions without larger, current data, fairness review, compliance review, and ongoing monitoring.
+## Usage
+- **API**: FastAPI service on port 8000 with /predict and /batch_predict endpoints
+- **Rate Limiting**: 100 requests/minute per IP (configurable)
+- **Database**: PostgreSQL 16 via docker-compose with async SQLAlchemy
+- **Dependencies**: See requirements.txt
+- **Deployment**: Docker multi-stage (python:3.12-slim, non-root user)

@@ -134,7 +134,14 @@ AGE_BANDS = {
     "senior": (55, 200),
 }
 
-MODEL_VERSION = "1.1.0"
+MODEL_VERSION = "2.0.0"
+
+# Default decision threshold (can be overridden by find_optimal_threshold)
+DEFAULT_THRESHOLD = _env_float("CREDIT_DEFAULT_THRESHOLD", 0.5)
+
+# SMOTE configuration
+SMOTE_ENABLED = os.environ.get("CREDIT_SMOTE_ENABLED", "true").lower() == "true"
+SMOTE_RANDOM_STATE = _env_int("CREDIT_SMOTE_RANDOM_STATE", 42)
 
 LOGISTIC_PARAMS = {
     "C": [0.01, 0.1, 1.0, 10.0],

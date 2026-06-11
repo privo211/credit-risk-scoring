@@ -1,6 +1,5 @@
 import json
 import joblib
-import numpy as np
 import pandas as pd
 from datetime import datetime
 from sklearn.linear_model import LogisticRegression

@@ -1,14 +1,15 @@
 """
 FastAPI application for Credit Risk Scoring Service.
-Provides /health, /predict, and /batch_predict endpoints.
+Provides /health, /predict, and /batch_predict endpoints with config, logging, rate limiting, and optional DB logging.
 """
 
 from contextlib import asynccontextmanager
+
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from slowapi import Limiter, _rate_limit_exceeded_handler
-from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
 
 from app.config import settings
 from app.logging import setup_logging, get_logger
@@ -19,12 +20,7 @@ from app.schemas import (
     BatchPredictionResponse,
     HealthResponse,
 )
-from app.inference import (
-    load_artifacts,
-    is_loaded,
-    predict_single,
-    predict_batch_endpoint,
-)
+from app.inference import load_artifacts, is_loaded, predict_single, predict_batch_endpoint
 from src.config import MODEL_VERSION
 from src.database import (
     close_db,
@@ -36,6 +32,7 @@ from src.database import (
 )
 
 logger = get_logger(__name__)
+
 limiter = Limiter(key_func=get_remote_address)
 
 
@@ -43,27 +40,29 @@ limiter = Limiter(key_func=get_remote_address)
 async def lifespan(app: FastAPI):
     setup_logging(level=settings.LOG_LEVEL)
     logger.info("Starting Credit Risk Scoring Service...")
+
     if settings.DATABASE_URL:
         init_db(settings.DATABASE_URL)
         await create_tables()
-        logger.info("Database initialized")
+        logger.info("Database initialized via %s", settings.DATABASE_URL.split("@")[-1] if "@" in settings.DATABASE_URL else "configured URL")
     else:
-        init_db("")
-        logger.info("Database logging disabled")
+        logger.warning("No DATABASE_URL set — prediction logging disabled")
 
     success = load_artifacts()
     if success:
-        logger.info("Service started successfully")
+        logger.info("Model loaded successfully")
     else:
         logger.warning("Service started without model. /predict will fail.")
+
     yield
+
     await close_db()
-    logger.info("Shutting down Credit Risk Scoring Service...")
+    logger.info("Shutdown complete.")
 
 
 app = FastAPI(
     title=settings.APP_NAME,
-    description="ML-powered loan default prediction service",
+    description="ML-powered loan default prediction service. Accepts applicant data and returns risk assessment.",
     version=MODEL_VERSION,
     lifespan=lifespan,
 )
@@ -94,10 +93,7 @@ async def health(request: Request):
 @limiter.limit(settings.RATE_LIMIT)
 async def predict(applicant: Applicant, request: Request):
     if not is_loaded():
-        raise HTTPException(
-            status_code=503,
-            detail="Model not loaded. Please try again later.",
-        )
+        raise HTTPException(status_code=503, detail="Model not loaded. Please try again later.")
     try:
         applicant_data = applicant.model_dump()
         result = predict_single(applicant_data)
@@ -105,22 +101,16 @@ async def predict(applicant: Applicant, request: Request):
         return PredictionResult(**result)
     except Exception as e:
         logger.error("Prediction error: %s", str(e))
-        raise HTTPException(
-            status_code=500,
-            detail=f"Prediction failed: {str(e)}",
-        )
+        raise HTTPException(status_code=500, detail=f"Prediction failed: {str(e)}")
 
 
 @app.post("/batch_predict", response_model=BatchPredictionResponse)
 @limiter.limit(settings.RATE_LIMIT)
-async def batch_predict(payload: BatchPredictionRequest, request: Request):
+async def batch_predict(req: BatchPredictionRequest, request: Request):
     if not is_loaded():
-        raise HTTPException(
-            status_code=503,
-            detail="Model not loaded. Please try again later.",
-        )
+        raise HTTPException(status_code=503, detail="Model not loaded. Please try again later.")
     try:
-        applicants_data = [a.model_dump() for a in payload.applicants]
+        applicants_data = [a.model_dump() for a in req.applicants]
         results = predict_batch_endpoint(applicants_data)
         for applicant_data, result in zip(applicants_data, results):
             await _log_prediction_if_enabled(applicant_data, result)
@@ -130,10 +120,7 @@ async def batch_predict(payload: BatchPredictionRequest, request: Request):
         )
     except Exception as e:
         logger.error("Batch prediction error: %s", str(e))
-        raise HTTPException(
-            status_code=500,
-            detail=f"Batch prediction failed: {str(e)}",
-        )
+        raise HTTPException(status_code=500, detail=f"Batch prediction failed: {str(e)}")
 
 
 async def _log_prediction_if_enabled(applicant_data: dict, result: dict) -> None:

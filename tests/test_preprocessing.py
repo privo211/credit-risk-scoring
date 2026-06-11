@@ -68,6 +68,23 @@ def test_stratification_preserves_class_ratio():
     assert abs(test_ratio - overall_ratio) < 0.05
 
 
+def test_all_engineered_features_no_nan():
+    """All 10 engineered features produce no NaN values."""
+    X_train, _, _, _, _, _ = load_and_split_data()
+    X_train_fe = engineer_features(X_train)
+    for feat in ENGINEERED_FEATURES:
+        assert X_train_fe[feat].isna().sum() == 0, f"NaN in {feat}"
+
+
+def test_engineered_features_numeric_types():
+    """Engineered features have correct numeric types."""
+    X_train, _, _, _, _, _ = load_and_split_data()
+    X_train_fe = engineer_features(X_train)
+    numeric_engineered = [f for f in ENGINEERED_FEATURES if f != "age_band"]
+    for feat in numeric_engineered:
+        assert np.issubdtype(X_train_fe[feat].dtype, np.number), f"{feat} not numeric"
+
+
 def test_preprocessor_handles_unknown_categories():
     X_train, X_val, _, _, _, _ = load_and_split_data()
     X_train_fe = engineer_features(X_train)

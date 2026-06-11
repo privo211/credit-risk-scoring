@@ -4,15 +4,12 @@ import logging
 import sys
 import warnings
 
-import pandas as pd
-from sklearn.calibration import CalibratedClassifierCV
-from sklearn.frozen import FrozenEstimator
 from src.data_loader import load_and_split_data, save_processed_data
 from src.preprocess import engineer_features, build_preprocessor
+from sklearn.calibration import CalibratedClassifierCV
 from src.train import train_all_models, select_best_model, save_model, save_preprocessor, save_metadata
-from src.evaluate import evaluate_model, print_metrics, find_optimal_threshold
-from src.explain import SHAPExplainer
-from src.config import MODEL_VERSION, MODELS_DIR
+from src.evaluate import evaluate_model, print_metrics
+from src.config import MODEL_VERSION
 
 warnings.filterwarnings("ignore")
 
@@ -60,43 +57,21 @@ def main() -> None:
     models = train_all_models(X_train_p, y_train)
     best_name, best_model = select_best_model(models, X_val_p, y_val)
 
-    logger.info("\nCalibrating probabilities for the best model...")
-    calibrated_model = CalibratedClassifierCV(
-        FrozenEstimator(best_model),
-        method="sigmoid",
-    )
-    calibrated_model.fit(X_val_p, y_val)
+    logger.info("Calibrating best model with Platt scaling (5-fold CV on training data)...")
+    calibrated = CalibratedClassifierCV(best_model, method="sigmoid", cv=5)
+    calibrated.fit(X_train_p, y_train)
+    best_model = calibrated
+    logger.info("Calibration complete")
 
+    save_model(best_model, "models/best_model.pkl")
     save_model(models.get("Logistic Regression"), "models/logistic_regression.pkl")
     save_model(models.get("Random Forest"), "models/random_forest.pkl")
     save_model(models.get("XGBoost"), "models/xgboost.pkl")
 
-    y_prob_val = calibrated_model.predict_proba(X_val_p)[:, 1]
-    optimal_threshold = find_optimal_threshold(y_val, y_prob_val, cost_fn=10.0, cost_fp=1.0)
-    logger.info(f"Optimal threshold found: {optimal_threshold:.4f}")
-
-    test_metrics = evaluate_model(calibrated_model, X_test_p, y_test, threshold=optimal_threshold)
+    test_metrics = evaluate_model(best_model, X_test_p, y_test)
     print_metrics(test_metrics, "TEST SET")
 
-    test_metrics["optimal_threshold"] = optimal_threshold
     save_metadata(best_name, test_metrics)
-
-    save_model(calibrated_model, "models/best_model.pkl")
-
-    logger.info("\nGenerating SHAP explanations...")
-    try:
-        background = X_train_p[:100]
-        explainer = SHAPExplainer(calibrated_model, background)
-        MODELS_DIR.mkdir(parents=True, exist_ok=True)
-        feature_names = preprocessor.get_feature_names_out()
-
-        X_test_df = pd.DataFrame(X_test_p[:200], columns=feature_names)
-        explainer.explain_global(X_test_df, save_path=str(MODELS_DIR / "shap_summary.png"))
-
-        x_local = pd.DataFrame(X_test_p[:1], columns=feature_names)
-        explainer.explain_local(x_local, save_path=str(MODELS_DIR / "shap_local.png"))
-    except Exception as e:
-        logger.warning(f"Could not generate SHAP plots: {e}")
 
     logger.info("\nTraining complete!")
 

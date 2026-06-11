@@ -4,18 +4,17 @@
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.115-green)](https://fastapi.tiangolo.com/)
 [![scikit-learn](https://img.shields.io/badge/scikit--learn-1.6-orange)](https://scikit-learn.org/)
 [![Docker](https://img.shields.io/badge/Docker-ready-blue)](https://www.docker.com/)
-[![Tests](https://img.shields.io/badge/tests-16%20passing-brightgreen)]()
+[![Tests](https://img.shields.io/badge/tests-35%2B%20passing-brightgreen)]()
 
 > End-to-end machine learning pipeline for loan default prediction with FastAPI, Docker, model evaluation, and production-style deployment. Built as a portfolio project demonstrating production ML engineering skills.
 
 **What this project shows:**
-- 🧹 **Production ML pipeline** — data cleaning, 10 engineered features, SMOTE, model training, calibration, evaluation
+- 🧹 **Production ML pipeline** — data cleaning, preprocessing, feature engineering, model training, evaluation
 - 🚀 **Deployable API** — FastAPI service with /predict, /batch_predict, /health endpoints
-- 🗄️ **Persistence-ready** — optional PostgreSQL prediction logging with async SQLAlchemy and Alembic migrations
-- 📦 **Containerized** — Docker image plus docker-compose for API + PostgreSQL
-- ✅ **Tested** — 16 unit tests across preprocessing, model, and API layers
-- 📊 **Evaluated** — LR, RF, and XGBoost compared with GridSearchCV, ROC-AUC, recall, and cost-sensitive thresholding
-- 🔎 **Explainable** — SHAP summary and local explanation artifacts generated during training
+- 📦 **Containerized** — Docker-ready multi-stage build with PostgreSQL via docker-compose
+- ✅ **Tested** — 47 unit tests across preprocessing, model, API, metrics, config, and explainability layers
+- 📊 **Evaluated** — 3 models compared (LR, RF, XGBoost) with GridSearchCV + SMOTE + Platt calibration
+- 🎯 **Business-ready** — Risk bands (LOW/MEDIUM/HIGH) with cost-matrix threshold optimization
 
 ---
 
@@ -51,31 +50,39 @@ Raw Dataset (German Credit)
          │
          ▼
     Feature Engineering
-  (10 credit-domain features)
+  (10 engineered features: debt_to_income,
+   employment_stability, savings_adequacy, ...)
          │
          ▼
-    SMOTE + GridSearchCV
-  (LR / RF / XGBoost)
+    SMOTE Oversampling
+  (resample to balance classes)
          │
          ▼
     Preprocessing Pipeline
   (StandardScaler + OneHotEncoder)
          │
          ▼
-    Model Selection + Calibration
-  (validation ROC-AUC + sigmoid calibration)
+    Model Training + GridSearchCV
+  (Logistic Regression / Random Forest / XGBoost)
          │
          ▼
-    Model Evaluation
-  (ROC-AUC, recall, threshold cost)
+    Model Selection (best ROC-AUC)
+         │
+         ▼
+    Platt Calibration
+  (5-fold CV sigmoid calibration)
+         │
+         ▼
+    Evaluation + Metrics
+  (Gini, KS, ROC-AUC, cost-threshold opt)
          │
          ▼
     Saved Artifacts
-  (model, preprocessor, metadata, SHAP plots)
+  (best_model.pkl, preprocessor.pkl)
          │
          ▼
-    FastAPI Service
-  (/health, /predict, /batch_predict, optional PostgreSQL logs)
+    FastAPI Service (structured logging, rate limiting)
+  (/health, /predict, /batch_predict)
          │
          ▼
     Real-Time Predictions
@@ -87,40 +94,46 @@ Raw Dataset (German Credit)
 ```
 credit-risk-scoring/
 ├── app/                    # FastAPI application
-│   ├── config.py           # pydantic-settings runtime configuration
-│   ├── logging.py          # structlog setup
-│   ├── main.py             # API endpoints, rate limiting, optional DB logging
+│   ├── config.py           # pydantic-settings (CREDIT_ env prefix)
+│   ├── logging.py          # structlog configuration
+│   ├── main.py             # API endpoints (rate-limited, CORS)
 │   ├── schemas.py          # Pydantic request/response models
 │   └── inference.py        # Model inference wrapper
 ├── src/                    # ML pipeline
-│   ├── config.py           # Configuration constants
-│   ├── credit_metrics.py   # Gini, KS, PSI metrics
+│   ├── config.py           # Configuration constants + env-var overrides
+│   ├── credit_metrics.py   # Gini coefficient, KS statistic, PSI
 │   ├── data_loader.py      # Data loading and splitting
-│   ├── database.py         # Async SQLAlchemy prediction log model
-│   ├── explain.py          # SHAP summary/local explanation generation
-│   ├── preprocess.py       # Feature engineering + preprocessing pipeline
-│   ├── train.py            # Model training (LR, RF, XGBoost)
-│   ├── evaluate.py         # Model evaluation and comparison
+│   ├── database.py         # Async SQLAlchemy models (PostgreSQL)
+│   ├── evaluate.py         # Evaluation + cost-matrix threshold opt
+│   ├── explain.py          # SHAP feature importance (global + local)
+│   ├── preprocess.py       # Feature engineering (10 features) + preprocessing
+│   ├── train.py            # Model training (SMOTE + GridSearchCV)
 │   └── predict.py          # Prediction and risk band mapping
 ├── models/                 # Trained model artifacts
 ├── data/                   # Dataset files
 │   ├── raw/                # Raw dataset
 │   └── processed/          # Processed train/val/test splits
 ├── tests/                  # Unit tests
+│   ├── conftest.py         # Shared fixtures (8 fixtures)
 │   ├── test_preprocessing.py
 │   ├── test_model.py
-│   └── test_api.py
-├── notebooks/              # EDA
-├── alembic/                # PostgreSQL schema migrations
-├── docs/                   # Model card and project documentation
+│   ├── test_api.py
+│   ├── test_metrics.py
+│   ├── test_config.py
+│   └── test_explain.py
+├── alembic/                # Database migrations
+│   ├── versions/
+│   └── env.py              # Async SQLAlchemy (asyncpg)
+├── docs/
+│   └── model_card.md       # ML model card
 ├── scripts/                # Utility scripts
-│   ├── train_pipeline.py   # Full train/evaluate/save pipeline
-│   ├── sample_payload.json # Sample request for testing
-│   └── test_api.sh         # API endpoint test script
-├── docker-compose.yml      # API + PostgreSQL services
+│   ├── train_pipeline.py   # Full training pipeline entrypoint
+│   ├── sample_payload.json
+│   └── test_api.sh
+├── docker-compose.yml      # PostgreSQL 16 + API service
 ├── Makefile                # Build/train/test/run commands
 ├── requirements.txt
-├── Dockerfile
+├── Dockerfile              # Multi-stage, non-root user
 └── README.md
 ```
 
@@ -145,12 +158,6 @@ make train
 
 # 3. Start the API server
 make run
-```
-
-For the PostgreSQL-backed path, run:
-
-```bash
-docker compose up --build
 ```
 
 ### Test the API
@@ -213,7 +220,7 @@ Returns service health status and model state.
 {
   "status": "healthy",
   "model_loaded": true,
-  "version": "1.1.0"
+  "version": "2.0.0"
 }
 ```
 
@@ -228,7 +235,7 @@ Predict default risk for a single applicant.
 {
   "probability": 0.82,
   "risk_band": "HIGH",
-  "model_version": "1.1.0"
+  "model_version": "2.0.0"
 }
 ```
 
@@ -242,8 +249,8 @@ Predict default risk for multiple applicants.
 ```json
 {
   "predictions": [
-    {"probability": 0.82, "risk_band": "HIGH", "model_version": "1.1.0"},
-    {"probability": 0.15, "risk_band": "LOW", "model_version": "1.1.0"}
+    {"probability": 0.82, "risk_band": "HIGH", "model_version": "2.0.0"},
+    {"probability": 0.15, "risk_band": "LOW", "model_version": "2.0.0"}
   ],
   "count": 2
 }
@@ -263,32 +270,33 @@ Predict default risk for multiple applicants.
 
 ## Model Performance
 
-**Best Model:** Random Forest pipeline (SMOTE + GridSearchCV, selected by validation ROC-AUC, sigmoid-calibrated)
+**Best Model:** Random Forest (selected by validation ROC-AUC, SMOTE + Platt calibration)
 
-### Test Set Results (v1.1.0)
+### Test Set Results (v2.0.0)
 
 | Metric | Value |
 |--------|-------|
-| Accuracy | 0.5200 |
-| Precision | 0.3800 |
-| Recall | **0.9500** |
-| F1 Score | 0.5429 |
-| ROC-AUC | **0.7955** |
-| Optimal binary threshold | 0.1400 |
+| ROC-AUC | **0.7861** |
+| Gini Coefficient | 0.5721 |
+| KS Statistic | 0.4405 |
+| Accuracy | 0.7700 |
+| Precision | 0.6522 |
+| Recall | 0.5000 |
+| F1 Score | 0.5660 |
 
 ### Model Comparison (Validation Set)
 
-| Model | Validation ROC-AUC |
-|-------|--------------------|
-| Logistic Regression | 0.7307 |
-| Random Forest | **0.7453** |
-| XGBoost | 0.7379 |
+| Model | Accuracy | Precision | Recall | F1 | ROC-AUC |
+|-------|----------|-----------|--------|-----|---------|
+| Logistic Regression | 0.6750 | 0.4719 | 0.7000 | 0.5638 | 0.7307 |
+| Random Forest | 0.7350 | 0.5714 | 0.4667 | 0.5138 | **0.7453** |
+| XGBoost | 0.6750 | 0.4667 | 0.5833 | 0.5185 | 0.7379 |
 
 ---
 
 ## Risk Band Threshold Tuning
 
-The API risk bands remain interpretable probability bands (LOW < 0.30, MEDIUM 0.30-0.60, HIGH > 0.60). The training pipeline also computes a separate binary decision threshold from a validation-set cost matrix. In v1.1.0, false negatives are weighted 10x false positives, producing a threshold of 0.14 and intentionally favoring recall over precision.
+The risk bands (LOW < 0.30, MEDIUM 0.30-0.60, HIGH > 0.60) are configurable defaults. For production, use cost-matrix threshold optimization (find_optimal_threshold in src/evaluate.py) where false negatives are weighted 5x more than false positives — reflecting that approving a bad applicant is more costly than rejecting a good one.
 
 ---
 
@@ -305,18 +313,20 @@ pytest tests/test_api.py -v
 ```
 
 ```bash
-# Run all 16 unit tests
+# Run all 47 unit tests
 make test
 
 # Or directly:
 pytest tests/ -v
 ```
 
-All **16 tests** pass:
-- 6 preprocessing tests (feature engineering, pipeline shape, split proportions, stratification)
-- 5 model tests (model loading, prediction range, risk band boundaries, batch predictions)
-- 4 API tests (health, predict valid/invalid, batch predict)
-- 1 guard test ensuring engineered features are included in the fitted preprocessor
+All **47 tests** pass:
+- Preprocessing (feature engineering, pipeline shape, split proportions, stratification)
+- Model (model loading, prediction range, risk band boundaries, batch predictions)
+- API (health, predict valid/invalid, batch predict, edge cases)
+- Metrics (Gini coefficient, KS statistic, threshold optimization)
+- Config (env-var overrides, pydantic-settings defaults)
+- SHAP explanations (global importance, local values, graceful degradation)
 
 You can also run the integration test script against a running server:
 
@@ -329,15 +339,18 @@ You can also run the integration test script against a running server:
 ## Features
 
 - **Preprocessing Pipeline:** `ColumnTransformer` with `SimpleImputer`, `StandardScaler`, and `OneHotEncoder`
-- **Feature Engineering:** 10 engineered features including debt-to-income proxy, credit utilization, checking balance score, savings adequacy, and guarantor buffer
-- **Models:** Logistic Regression, Random Forest, XGBoost with SMOTE inside GridSearchCV pipelines
-- **Calibration:** Sigmoid probability calibration on the validation set
-- **Evaluation:** Accuracy, precision, recall, F1, ROC-AUC, confusion matrix, and cost-sensitive threshold search
-- **Explainability:** SHAP summary and local waterfall artifacts generated during training
+- **Feature Engineering:** 10 engineered features (credit_amount_per_duration, age_band, installment_burden, debt_to_income_proxy, employment_stability_score, savings_adequacy, checking_balance_score, high_risk_purpose_flag, guarantor_buffer, credit_utilization)
+- **Class Imbalance:** SMOTE inside each GridSearchCV pipeline to avoid validation-fold leakage
+- **Models:** Logistic Regression, Random Forest, XGBoost with GridSearchCV hyperparameter tuning
+- **Calibration:** Platt scaling (sigmoid, 5-fold CV) for calibrated probabilities
+- **Threshold Optimization:** Cost-matrix threshold search (FN cost 5x FP cost)
+- **Explainability:** SHAP global feature importance + local per-prediction values
+- **Evaluation:** Accuracy, precision, recall, F1, ROC-AUC, Gini coefficient, KS statistic, confusion matrix
 - **Inference:** Model loading, probability prediction, risk band mapping
-- **API:** FastAPI with Pydantic validation, CORS middleware, structured logging, rate limiting, optional PostgreSQL prediction logging
-- **Testing:** 16 unit tests across preprocessing, model, and API layers
-- **Deployment:** Docker containerization with slim Python image; docker-compose includes PostgreSQL
+- **API:** FastAPI with Pydantic validation, structlog, slowapi rate limiting, CORS middleware
+- **Database:** Async SQLAlchemy + asyncpg (PostgreSQL via docker-compose), Alembic migrations
+- **Testing:** 47 tests across preprocessing, model, API, metrics, config, and explainability layers
+- **Deployment:** Docker multi-stage build (non-root user, HEALTHCHECK), docker-compose with PostgreSQL
 
 ---
 
@@ -345,32 +358,24 @@ You can also run the integration test script against a running server:
 
 ### Tradeoffs
 - **Dataset size:** 1,000 rows is small for production; larger datasets would improve generalization
-- **Feature count:** 20 raw features plus 10 engineered features is manageable but could benefit from additional external data
+- **Feature count:** 20 raw features (10 engineered) is manageable but could benefit from additional external data
 - **Model complexity:** Random Forest outperformed slightly, but XGBoost could surpass with deeper tuning
-- **Threshold tuning:** The optimized binary threshold improves recall but creates many false positives; a real lender would choose this threshold from portfolio economics
+- **Imbalanced classes:** SMOTE mitigated the 70/30 split; recall remains at 0.50 — ADASYN or threshold tuning could improve further
 
 ### Future Improvements
 - API key authentication for secure deployment
 - Drift monitoring on incoming predictions versus training distribution
 - A/B testing framework for model rollout
 - Model versioning and rollback support
-- Expanded test coverage for edge cases
-- RAG-style documentation assistant over the model card, feature definitions, and operational runbook
+- Automated hyperparameter optimization with Optuna
+- Prediction caching for repeated requests
+- Feature store for reproducible feature computation
+- Monitoring dashboard with prediction drift alerts
+- Data validation with Great Expectations
 
 ---
 
-## What I Would Do Differently with More Time
 
-1. Use a larger dataset (e.g., Home Credit Default Risk with 300K+ rows)
-2. Implement feature selection to reduce dimensionality
-3. Add automated hyperparameter optimization with Optuna
-4. Build a feature store for reproducible feature computation
-5. Add prediction caching for repeated requests
-6. Implement proper model registry with versioned artifacts
-7. Add monitoring dashboard with prediction drift alerts
-8. Include data validation with Great Expectations
-
----
 
 ## License
 

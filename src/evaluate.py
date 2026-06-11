@@ -18,12 +18,35 @@ from sklearn.metrics import (
 from src.config import POSITIVE_CLASS
 
 
+def find_optimal_threshold(y_true: pd.Series, y_prob: np.ndarray, cost_fn: float = 10.0, cost_fp: float = 1.0) -> float:
+    """Find the classification threshold that minimizes the expected cost.
+    By default, FN (predicting good when bad) costs 10x more than FP (predicting bad when good).
+    """
+    thresholds = np.linspace(0.01, 0.99, 99)
+    best_threshold = 0.5
+    min_cost = float("inf")
+
+    for t in thresholds:
+        y_pred = (y_prob >= t).astype(int)
+        tn, fp, fn, tp = confusion_matrix(y_true, y_pred).ravel()
+        cost = fn * cost_fn + fp * cost_fp
+        if cost < min_cost:
+            min_cost = cost
+            best_threshold = t
+
+    return best_threshold
+
+
 def evaluate_model(
-    model, X: pd.DataFrame, y_true: pd.Series
+    model, X: pd.DataFrame, y_true: pd.Series, threshold: float = None
 ) -> dict:
     """Compute comprehensive evaluation metrics for a model."""
-    y_pred = model.predict(X)
     y_prob = model.predict_proba(X)[:, POSITIVE_CLASS]
+
+    if threshold is None:
+        y_pred = model.predict(X)
+    else:
+        y_pred = (y_prob >= threshold).astype(int)
 
     metrics = {
         "accuracy": float(accuracy_score(y_true, y_pred)),
@@ -35,6 +58,9 @@ def evaluate_model(
         "roc_auc": float(roc_auc_score(y_true, y_prob)),
         "confusion_matrix": confusion_matrix(y_true, y_pred).tolist(),
     }
+    if threshold is not None:
+        metrics["optimal_threshold"] = float(threshold)
+
     return metrics
 
 
@@ -42,6 +68,8 @@ def print_metrics(metrics: dict, label: str = ""):
     """Pretty-print evaluation metrics."""
     prefix = f"[{label}] " if label else ""
     print(f"\n{prefix}Evaluation Metrics:")
+    if "optimal_threshold" in metrics:
+        print(f"  Optimal Threshold: {metrics['optimal_threshold']:.4f}")
     print(f"  Accuracy:  {metrics['accuracy']:.4f}")
     print(f"  Precision: {metrics['precision']:.4f}")
     print(f"  Recall:    {metrics['recall']:.4f}")

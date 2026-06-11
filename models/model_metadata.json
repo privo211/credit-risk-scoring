@@ -1,24 +1,25 @@
 {
   "model_name": "Random Forest",
-  "model_version": "1.0.0",
-  "training_date": "2026-06-10T01:55:22.623639",
+  "model_version": "1.1.0",
+  "training_date": "2026-06-11T01:14:44.631454",
   "dataset": "German Credit (Statlog)",
   "num_samples": 1000,
   "metrics": {
-    "accuracy": 0.765,
-    "precision": 0.6444444444444445,
-    "recall": 0.48333333333333334,
-    "f1": 0.5523809523809524,
-    "roc_auc": 0.7804761904761905,
+    "accuracy": 0.52,
+    "precision": 0.38,
+    "recall": 0.95,
+    "f1": 0.5428571428571428,
+    "roc_auc": 0.7955357142857143,
     "confusion_matrix": [
       [
-        124,
-        16
+        47,
+        93
       ],
       [
-        31,
-        29
+        3,
+        57
       ]
-    ]
+    ],
+    "optimal_threshold": 0.14
   }
 }

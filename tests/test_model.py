@@ -6,6 +6,7 @@ import pandas as pd
 from src.predict import load_model, load_preprocessor, predict_proba, get_risk_band
 from src.config import MODELS_DIR, BEST_MODEL_PATH, PREPROCESSOR_PATH
 from src.data_loader import load_and_split_data
+from src.preprocess import engineer_features
 
 
 def test_model_loads():
@@ -26,7 +27,7 @@ def test_prediction_probability_range():
     preprocessor = load_preprocessor()
     _, _, X_test, _, _, y_test = load_and_split_data()
     sample = X_test.iloc[0:1]
-    prob = model.predict_proba(preprocessor.transform(sample))[0, 1]
+    prob = model.predict_proba(preprocessor.transform(engineer_features(sample)))[0, 1]
     assert 0.0 <= prob <= 1.0, f"Probability {prob} outside [0,1]"
 
 

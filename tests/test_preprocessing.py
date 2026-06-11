@@ -35,6 +35,20 @@ def test_pipeline_output_shape():
     assert X_processed.shape[1] > 0, "No features produced"
 
 
+def test_preprocessor_uses_engineered_features():
+    X_train, _, _, _, _, _ = load_and_split_data()
+    X_train_fe = engineer_features(X_train)
+    preprocessor = build_preprocessor()
+    preprocessor.fit(X_train_fe)
+    configured_columns = {
+        col
+        for _, _, columns in preprocessor.transformers_
+        for col in columns
+    }
+    for feature in ENGINEERED_FEATURES:
+        assert feature in configured_columns
+
+
 def test_split_proportions():
     X_train, X_val, X_test, y_train, y_val, y_test = load_and_split_data()
     total = len(y_train) + len(y_val) + len(y_test)

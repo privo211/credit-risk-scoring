@@ -11,6 +11,8 @@ from sklearn.preprocessing import StandardScaler, OneHotEncoder
 from src.config import (
     NUMERIC_FEATURES,
     CATEGORICAL_FEATURES,
+    ENGINEERED_NUMERIC_FEATURES,
+    ENGINEERED_CATEGORICAL_FEATURES,
 )
 
 
@@ -60,6 +62,9 @@ def engineer_features(df: pd.DataFrame) -> pd.DataFrame:
 
 def build_preprocessor() -> ColumnTransformer:
     """Build a ColumnTransformer with separate pipelines for numeric and categorical features."""
+    numeric_features = NUMERIC_FEATURES + ENGINEERED_NUMERIC_FEATURES
+    categorical_features = CATEGORICAL_FEATURES + ENGINEERED_CATEGORICAL_FEATURES
+
     numeric_pipeline = Pipeline(
         steps=[
             ("imputer", SimpleImputer(strategy="median")),
@@ -79,8 +84,8 @@ def build_preprocessor() -> ColumnTransformer:
 
     preprocessor = ColumnTransformer(
         transformers=[
-            ("num", numeric_pipeline, NUMERIC_FEATURES),
-            ("cat", categorical_pipeline, CATEGORICAL_FEATURES),
+            ("num", numeric_pipeline, numeric_features),
+            ("cat", categorical_pipeline, categorical_features),
         ],
         remainder="drop",
     )

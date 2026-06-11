@@ -6,6 +6,8 @@ from datetime import datetime
 from sklearn.linear_model import LogisticRegression
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import GridSearchCV, StratifiedKFold
+from imblearn.pipeline import Pipeline as ImbPipeline
+from imblearn.over_sampling import SMOTE
 
 from src.config import (
     MODELS_DIR,
@@ -19,18 +21,24 @@ from src.config import (
     XGB_PARAMS,
     POSITIVE_CLASS,
     MODEL_VERSION,
+    GRID_N_JOBS,
 )
 
 
 def train_logistic_regression(X_train, y_train, cv=CV_FOLDS):
     skf = StratifiedKFold(n_splits=cv, shuffle=True, random_state=RANDOM_STATE)
     lr = LogisticRegression(random_state=RANDOM_STATE)
+    smote = SMOTE(random_state=RANDOM_STATE)
+    pipeline = ImbPipeline([("smote", smote), ("model", lr)])
+
+    grid_params = {f"model__{k}": v for k, v in LOGISTIC_PARAMS.items()}
+
     grid = GridSearchCV(
-        lr,
-        LOGISTIC_PARAMS,
+        pipeline,
+        grid_params,
         cv=skf,
         scoring="roc_auc",
-        n_jobs=-1,
+        n_jobs=GRID_N_JOBS,
         verbose=0,
     )
     grid.fit(X_train, y_train)
@@ -42,12 +50,17 @@ def train_logistic_regression(X_train, y_train, cv=CV_FOLDS):
 def train_random_forest(X_train, y_train, cv=CV_FOLDS):
     skf = StratifiedKFold(n_splits=cv, shuffle=True, random_state=RANDOM_STATE)
     rf = RandomForestClassifier(random_state=RANDOM_STATE)
+    smote = SMOTE(random_state=RANDOM_STATE)
+    pipeline = ImbPipeline([("smote", smote), ("model", rf)])
+
+    grid_params = {f"model__{k}": v for k, v in RF_PARAMS.items()}
+
     grid = GridSearchCV(
-        rf,
-        RF_PARAMS,
+        pipeline,
+        grid_params,
         cv=skf,
         scoring="roc_auc",
-        n_jobs=-1,
+        n_jobs=GRID_N_JOBS,
         verbose=0,
     )
     grid.fit(X_train, y_train)
@@ -66,16 +79,20 @@ def train_xgboost(X_train, y_train, cv=CV_FOLDS):
     skf = StratifiedKFold(n_splits=cv, shuffle=True, random_state=RANDOM_STATE)
     xgb = XGBClassifier(
         random_state=RANDOM_STATE,
-        use_label_encoder=False,
         eval_metric="logloss",
         verbosity=0,
     )
+    smote = SMOTE(random_state=RANDOM_STATE)
+    pipeline = ImbPipeline([("smote", smote), ("model", xgb)])
+
+    grid_params = {f"model__{k}": v for k, v in XGB_PARAMS.items()}
+
     grid = GridSearchCV(
-        xgb,
-        XGB_PARAMS,
+        pipeline,
+        grid_params,
         cv=skf,
         scoring="roc_auc",
-        n_jobs=-1,
+        n_jobs=GRID_N_JOBS,
         verbose=0,
     )
     grid.fit(X_train, y_train)

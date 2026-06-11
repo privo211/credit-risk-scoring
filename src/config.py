@@ -107,10 +107,8 @@ CATEGORICAL_FEATURES = [
     "foreign_worker",
 ]
 
-# Feature engineering columns
-ENGINEERED_FEATURES = [
+ENGINEERED_NUMERIC_FEATURES = [
     "credit_amount_per_duration",
-    "age_band",
     "installment_burden",
     "debt_to_income_proxy",
     "employment_stability_score",
@@ -121,6 +119,13 @@ ENGINEERED_FEATURES = [
     "credit_utilization",
 ]
 
+ENGINEERED_CATEGORICAL_FEATURES = [
+    "age_band",
+]
+
+# Feature engineering columns
+ENGINEERED_FEATURES = ENGINEERED_NUMERIC_FEATURES + ENGINEERED_CATEGORICAL_FEATURES
+
 # Age bands
 AGE_BANDS = {
     "young": (0, 25),
@@ -129,7 +134,7 @@ AGE_BANDS = {
     "senior": (55, 200),
 }
 
-MODEL_VERSION = "1.0.0"
+MODEL_VERSION = "1.1.0"
 
 LOGISTIC_PARAMS = {
     "C": [0.01, 0.1, 1.0, 10.0],
@@ -154,5 +159,6 @@ XGB_PARAMS = {
 }
 
 CV_FOLDS = _env_int("CREDIT_CV_FOLDS", 5)
+GRID_N_JOBS = _env_int("CREDIT_GRID_N_JOBS", 1)
 
 LOGGER_NAME = os.environ.get("CREDIT_LOGGER_NAME", "credit_risk")

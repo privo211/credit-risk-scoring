@@ -9,7 +9,7 @@ setup:
 
 # Train all models and save artifacts
 train:
-	python scripts/train_pipeline.py
+	MPLCONFIGDIR=/tmp/matplotlib PYTHONPATH=. python3 scripts/train_pipeline.py
 
 # Run all tests
 test:

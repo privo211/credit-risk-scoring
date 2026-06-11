@@ -5,20 +5,10 @@ Sets up model loading, logging, and prediction at startup.
 
 import logging
 import time
-import sys
 from src.predict import load_model, load_preprocessor, predict_proba, predict_batch
 from src.config import BEST_MODEL_PATH, PREPROCESSOR_PATH, MODEL_VERSION, LOGGER_NAME
+
 logger = logging.getLogger(LOGGER_NAME)
-logger.setLevel(logging.INFO)
-handler = logging.StreamHandler(sys.stdout)
-handler.setFormatter(
-    logging.Formatter(
-        "%(asctime)s | %(levelname)s | %(name)s | %(message)s",
-        datefmt="%Y-%m-%d %H:%M:%S",
-    )
-)
-if not logger.handlers:
-    logger.addHandler(handler)
 _model = None
 _preprocessor = None
 

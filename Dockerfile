@@ -20,9 +20,9 @@ ENV PATH=/root/.local/bin:$PATH
 # Create non-root user
 RUN groupadd -r appuser && useradd -r -g appuser appuser
 
-# Copy application code only (NOT models/)
 COPY app/ ./app/
 COPY src/ ./src/
+COPY models/ ./models/
 
 # Switch to non-root
 USER appuser
